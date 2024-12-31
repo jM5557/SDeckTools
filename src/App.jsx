@@ -2,35 +2,134 @@ import React, { useState, useEffect } from "react";
 import { useDropzone } from 'react-dropzone';
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
-import { TrashIcon, ArrowUpTrayIcon } from "@heroicons/react/24/outline";
+import { TrashIcon, ArrowUpTrayIcon, FolderIcon, PlayIcon, PauseIcon, EyeIcon } from "@heroicons/react/24/outline";
 import itemsData from "./data/files.json";
 
-// AudioTrack Component to display audio and manage loading
-const AudioTrack = ({ name, url, onRemove }) => {
-  const [loading, setLoading] = useState(true);
+const PreviewButton = ({ fileName }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audio] = useState(new Audio(`/sounds/${fileName}`)); // Audio file in public/sounds
+
+  const togglePlayPause = () => {
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
 
   useEffect(() => {
-    const audio = new Audio(url);
-    audio.oncanplaythrough = () => setLoading(false);
-    audio.load();
-  }, [url]);
+    // Reset isPlaying state when audio finishes
+    const handleEnded = () => {
+      setIsPlaying(false);
+    };
+
+    audio.addEventListener("ended", handleEnded);
+
+    return () => {
+      audio.removeEventListener("ended", handleEnded);
+      audio.pause(); // Ensure cleanup when unmounted
+    };
+  }, [audio]);
+
+  return (
+    <button
+      onClick={togglePlayPause}
+      className="bg-blue-500 text-white p-2 rounded hover:bg-blue-400 flex items-center gap-1"
+    >
+      <EyeIcon className="h-5 w-5" />
+      {isPlaying ? "Pause Preview" : "Preview"}
+    </button>
+  );
+};
+
+const AudioControls = ({ url }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audio] = useState(new Audio(url));
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleLoadedMetadata = () => setDuration(audio.duration);
+    const handleEnded = () => setIsPlaying(false);
+
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("ended", handleEnded);
+
+    return () => {
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("ended", handleEnded);
+      audio.pause(); // Ensure cleanup when unmounted
+    };
+  }, [audio]);
+
+  const togglePlayPause = () => {
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleScrubberChange = (e) => {
+    const newTime = parseFloat(e.target.value);
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  const formatTime = (time) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60).toString().padStart(2, "0");
+    return `${minutes}:${seconds}`;
+  };
 
   return (
     <div className="flex items-center gap-4">
-      {loading ? (
-        <div className="w-5 h-5 border-4 border-t-4 border-accent rounded-full animate-spin"></div> // Spinner
-      ) : (
-        <audio controls className="flex-1">
-          <source src={url} />
-          Your browser does not support the audio element.
-        </audio>
-      )}
+      <button
+        onClick={togglePlayPause}
+        className={`p-2 rounded-full text-white ${
+          isPlaying ? "bg-red-500 hover:bg-red-400" : "bg-green-500 hover:bg-green-400"
+        }`}
+      >
+        {isPlaying 
+          ? (<span><PauseIcon className="h-5 w-5"  /></span>) 
+          : (<span><PlayIcon className="h-5 w-5" /></span>)
+        }
+      </button>
+      <div className="flex-1">
+        <input
+          type="range"
+          min="0"
+          max={duration}
+          step="0.1"
+          value={currentTime}
+          onChange={handleScrubberChange}
+          className="w-full accent-blue-500"
+        />
+        <div className="flex justify-between text-xs text-gray-400 mt-1">
+          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AudioTrack = ({ name, url, onRemove }) => {
+  return (
+    <div className="flex items-center gap-4">
+      <b>{name}</b>
+      <AudioControls url={url} />
       <button
         onClick={() => onRemove(name)}
         className="bg-red-500 text-white p-2 rounded hover:bg-red-400 flex items-center gap-1"
       >
         <TrashIcon className="h-5 w-5" />
-        Remove
+        <span className="hidden">Delete</span>
       </button>
     </div>
   );
@@ -56,7 +155,6 @@ const App = () => {
   });
 
   const [errorMessage, setErrorMessage] = useState("");
-  const [isDarkMode, setIsDarkMode] = useState(true); // State to toggle dark mode
 
   // File upload logic
   const handleFileUpload = (fileName, acceptedFiles) => {
@@ -182,10 +280,6 @@ const App = () => {
     }));
   };
 
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
   // Dropzone configuration for each track
   const Dropzone = ({ fileName }) => {
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -208,16 +302,8 @@ const App = () => {
   };
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-night' : 'bg-white'} text-white font-sans p-4`}>
+    <div className="min-h-screen bg-night text-white font-sans p-4 flex flex-col items-center justify-center">
       <h1 className="text-3xl font-bold mb-6 text-center">Audio Pack Builder</h1>
-
-      {/* Toggle for dark mode */}
-      <button
-        onClick={toggleDarkMode}
-        className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-400 mb-4"
-      >
-        Toggle {isDarkMode ? "Light" : "Dark"} Mode
-      </button>
 
       <div className="mb-8 flex justify-center">
         <label
@@ -234,10 +320,17 @@ const App = () => {
           className="hidden"
           onChange={handleZipUpload}
         />
+        <button
+          onClick={handleExport}
+          className="bg-accent text-white ml-2 p-3 rounded hover:bg-accent/90 cursor-pointer flex items-center gap-2"
+        >
+          <FolderIcon className="h-5 w-5" />
+          Export as ZIP
+        </button>
       </div>
 
       {/* Pack Info Form */}
-      <div className="mb-8 p-4 bg-gray-800 rounded-md">
+      <div className="mb-8 p-4 bg-gray-800 rounded-md w-full max-w-md">
         <h3 className="text-xl font-semibold mb-4">Pack Info</h3>
 
         <div className="mb-4">
@@ -282,15 +375,16 @@ const App = () => {
 
       {/* Error message */}
       {errorMessage && (
-        <div className="mb-4 text-red-500">{errorMessage}</div>
+        <div className="mb-4 text-red-500 text-center">{errorMessage}</div>
       )}
 
       {/* Dropzone for each item */}
       {itemsData.map((item) => (
-        <div key={item.fileName} className="mb-8">
-          <h2 className="text-xl font-semibold">{item.title}</h2>
-          <p className="text-gray-400">{item.description}</p>
-          <p className="text-sm text-gray-500">{item.fileName}</p>
+        <div key={item.fileName} className="mb-8 w-full max-w-md">
+          <h2 className="text-xl font-semibold text-center">{item.title}</h2>
+          <p className="text-gray-400 text-center mb-2">{item.description}</p>
+          <p className="text-sm text-gray-500 text-center mb-2">{item.fileName}</p>
+          <PreviewButton fileName={item.fileName} />
 
           {/* Custom Dropzone for file upload */}
           <Dropzone fileName={item.fileName} />
@@ -302,13 +396,6 @@ const App = () => {
           </div>
         </div>
       ))}
-
-      <button
-        onClick={handleExport}
-        className="bg-accent text-white p-3 rounded hover:bg-accent/90 mt-6 block mx-auto"
-      >
-        Export as ZIP
-      </button>
     </div>
   );
 };
