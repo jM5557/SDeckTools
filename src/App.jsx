@@ -315,6 +315,12 @@ const App = () => {
     [config]
   );
 
+  const handleRemoveAllFiles = (trackName) => {
+    const newConfig = { ...config };
+    newConfig[trackName] = [];
+    setConfig(newConfig);
+  }
+
   const handleRemoveFile = (fileName, trackName) => {
     const newConfig = { ...config };
     newConfig[fileName] = newConfig[fileName].filter((track) => {
@@ -543,6 +549,20 @@ const App = () => {
                     handleFileUpload={handleFileUploadCallback}  
                   />
                 </div>
+
+                { (config[item.fileName].length > 0) &&
+                  <small className="table mb-[-16px] py-1 px-6 rounded-t-md bg-nightMid">
+                    { config[item.fileName].length } Files
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAllFiles(item.fileName)}
+                      className="bg-nightLight rounded inline-block ml-2 py-1 px-2"
+                    >
+                      <TrashIcon className="w-3 h-3" />
+                      <span className="hidden">Remove all Files</span>
+                    </button>
+                  </small>
+                }
 
                 <div className="mt-4 space-y-4 max-h-[240px] overflow-y-auto bg-nightMid">
                   {config[item.fileName].map(({ name, url, size }) => (
