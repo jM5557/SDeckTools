@@ -1,36 +1,34 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useDropzone } from 'react-dropzone';
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { TrashIcon, ArrowUpTrayIcon, FolderIcon, PlayIcon, PauseIcon, EyeIcon } from "@heroicons/react/24/outline";
 import itemsData from "./data/files.json";
 
-const PreviewButton = ({ fileName }) => {
+const PreviewButton = React.memo(({ fileName }) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [audio] = useState(new Audio(`/sounds/${fileName}`)); // Audio file in public/sounds
+  const audioRef = useRef(new Audio(`/sounds/${fileName}`));
 
-  const togglePlayPause = () => {
+  const togglePlayPause = useCallback(() => {
+    const audio = audioRef.current;
     if (isPlaying) {
       audio.pause();
     } else {
       audio.play();
     }
     setIsPlaying(!isPlaying);
-  };
+  }, [isPlaying]);
 
   useEffect(() => {
-    // Reset isPlaying state when audio finishes
-    const handleEnded = () => {
-      setIsPlaying(false);
-    };
+    const audio = audioRef.current;
+    const handleEnded = () => setIsPlaying(false);
 
     audio.addEventListener("ended", handleEnded);
-
     return () => {
       audio.removeEventListener("ended", handleEnded);
-      audio.pause(); // Ensure cleanup when unmounted
+      audio.pause();
     };
-  }, [audio]);
+  }, []);
 
   return (
     <button
@@ -41,15 +39,16 @@ const PreviewButton = ({ fileName }) => {
       {isPlaying ? "Pause Preview" : "Preview"}
     </button>
   );
-};
+});
 
-const AudioControls = ({ url }) => {
+const AudioControls = React.memo(({ url }) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [audio] = useState(new Audio(url));
+  const audioRef = useRef(new Audio(url));
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
   useEffect(() => {
+    const audio = audioRef.current;
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleLoadedMetadata = () => setDuration(audio.duration);
     const handleEnded = () => setIsPlaying(false);
@@ -62,21 +61,23 @@ const AudioControls = ({ url }) => {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("ended", handleEnded);
-      audio.pause(); // Ensure cleanup when unmounted
+      audio.pause();
     };
-  }, [audio]);
+  }, []);
 
-  const togglePlayPause = () => {
+  const togglePlayPause = useCallback(() => {
+    const audio = audioRef.current;
     if (isPlaying) {
       audio.pause();
     } else {
       audio.play();
     }
     setIsPlaying(!isPlaying);
-  };
+  }, [isPlaying]);
 
   const handleScrubberChange = (e) => {
     const newTime = parseFloat(e.target.value);
+    const audio = audioRef.current;
     audio.currentTime = newTime;
     setCurrentTime(newTime);
   };
@@ -96,9 +97,8 @@ const AudioControls = ({ url }) => {
         }`}
       >
         {isPlaying 
-          ? (<span><PauseIcon className="h-5 w-5"  /></span>) 
-          : (<span><PlayIcon className="h-5 w-5" /></span>)
-        }
+          ? <PauseIcon className="h-5 w-5" /> 
+          : <PlayIcon className="h-5 w-5" />}
       </button>
       <div className="flex-1">
         <input
@@ -117,22 +117,73 @@ const AudioControls = ({ url }) => {
       </div>
     </div>
   );
-};
+});
 
-const AudioTrack = ({ name, url, onRemove }) => {
+const AudioTrack = React.memo(({ name, url, onRemove }) => (
+  <div className="flex items-center gap-4">
+    <b>{name}</b>
+    <AudioControls url={url} />
+    <button
+      onClick={() => onRemove(name)}
+      className="bg-red-500 text-white p-2 rounded hover:bg-red-400 flex items-center gap-1"
+    >
+      <TrashIcon className="h-5 w-5" />
+      <span className="hidden">Delete</span>
+    </button>
+  </div>
+));
+
+const Dropzone = React.memo(({ fileName, handleFileUpload }) => {
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: useCallback((acceptedFiles) => handleFileUpload(fileName, acceptedFiles), [fileName, handleFileUpload]),
+    accept: ".wav", // Only allow .wav files
+    multiple: true,
+  });
+
   return (
-    <div className="flex items-center gap-4">
-      <b>{name}</b>
-      <AudioControls url={url} />
-      <button
-        onClick={() => onRemove(name)}
-        className="bg-red-500 text-white p-2 rounded hover:bg-red-400 flex items-center gap-1"
-      >
-        <TrashIcon className="h-5 w-5" />
-        <span className="hidden">Delete</span>
-      </button>
+    <div
+      {...getRootProps()}
+      className={`border-dashed border-4 p-6 rounded-lg transition-colors ${
+        isDragActive ? "border-blue-500" : "border-gray-400"
+      } bg-gray-800 text-white text-center`}
+    >
+      <input {...getInputProps()} />
+      <p>Drag & drop audio files here, or click to select files</p>
     </div>
   );
+});
+
+const handleFileUpload = (fileName, acceptedFiles, config, setConfig, setErrorMessage) => {
+  const newConfig = { ...config };
+  let invalidFiles = false;
+
+  acceptedFiles.forEach((file) => {
+    if (!file.name.endsWith(".wav")) {
+      invalidFiles = true;
+      return;
+    }
+
+    const fileExists = newConfig[fileName]?.find((f) => f.name === file.name);
+    if (!fileExists) {
+      const objectURL = URL.createObjectURL(file);
+      newConfig[fileName] = [
+        ...(newConfig[fileName] || []),
+        {
+          name: file.name,
+          file,
+          url: objectURL,
+          size: file.size,
+        },
+      ];
+    }
+  });
+
+  setConfig(newConfig);
+  if (invalidFiles) {
+    setErrorMessage("Some files were incompatible and have been skipped.");
+  } else {
+    setErrorMessage(""); // Clear error message if all files are valid
+  }
 };
 
 const App = () => {
@@ -155,37 +206,6 @@ const App = () => {
   });
 
   const [errorMessage, setErrorMessage] = useState("");
-
-  // File upload logic
-  const handleFileUpload = (fileName, acceptedFiles) => {
-    const newConfig = { ...config };
-    let invalidFiles = false;
-
-    acceptedFiles.forEach((file) => {
-      if (!file.name.endsWith(".mp3") && !file.name.endsWith(".wav")) {
-        invalidFiles = true;
-        return;
-      }
-
-      const fileExists = newConfig[fileName].find((f) => f.name === file.name);
-      if (!fileExists) {
-        const objectURL = URL.createObjectURL(file);
-        newConfig[fileName].push({
-          name: file.name,
-          file,
-          url: objectURL,
-          size: file.size,
-        });
-      }
-    });
-
-    setConfig(newConfig);
-    if (invalidFiles) {
-      setErrorMessage("Some files were incompatible and have been skipped.");
-    } else {
-      setErrorMessage(""); // Clear error message if all files are valid
-    }
-  };
 
   const handleRemoveFile = (fileName, trackName) => {
     const newConfig = { ...config };
@@ -273,33 +293,9 @@ const App = () => {
     setPackInfo(parsedPack);
   };
 
-  const handlePackInfoChange = (field, value) => {
-    setPackInfo((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  // Dropzone configuration for each track
-  const Dropzone = ({ fileName }) => {
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-      onDrop: (acceptedFiles) => handleFileUpload(fileName, acceptedFiles),
-      accept: ".mp3, .wav", // Only allow .mp3 and .wav files
-      multiple: true,
-    });
-
-    return (
-      <div
-        {...getRootProps()}
-        className={`border-dashed border-4 p-6 rounded-lg transition-colors ${
-          isDragActive ? "border-blue-500" : "border-gray-400"
-        } bg-gray-800 text-white text-center`}
-      >
-        <input {...getInputProps()} />
-        <p>Drag & drop audio files here, or click to select files</p>
-      </div>
-    );
-  };
+  const handlePackInfoChange = useCallback((field, value) => {
+    setPackInfo((prev) => ({ ...prev, [field]: value }));
+  }, []);
 
   return (
     <div className="min-h-screen bg-night text-white font-sans p-4 flex flex-col items-center justify-center">
@@ -386,8 +382,10 @@ const App = () => {
           <p className="text-sm text-gray-500 text-center mb-2">{item.fileName}</p>
           <PreviewButton fileName={item.fileName} />
 
-          {/* Custom Dropzone for file upload */}
-          <Dropzone fileName={item.fileName} />
+          <div className="my-4">
+            {/* Custom Dropzone for file upload */}
+            <Dropzone fileName={item.fileName} />
+          </div>
 
           <div className="mt-4 space-y-4">
             {config[item.fileName].map(({ name, url }) => (
