@@ -433,7 +433,9 @@ const App = () => {
 
       <div className="md:flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-left mb-6">SDeckTools</h1>
+          <h1 className="text-3xl font-bold text-left mb-6">
+            <img alt = "SDeckTools Logo" src = "/logo.svg" className="w-40" />
+          </h1>
           <h2 className="text-xl font-bold text-left">Create SFX Packs</h2>
           <h3 className="text-sm border-l-accent border-l-4 pl-2">For SteamOS & Big Picture</h3>
         </div>
