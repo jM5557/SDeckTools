@@ -9,7 +9,10 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, message }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" 
+      onClick={onClose}
+    >
       <div className="bg-nightMid p-6 rounded-md shadow-lg text-white max-w-sm w-full">
         <p className="text-lg mb-4">{message}</p>
         <div className="flex justify-end gap-4">
@@ -59,7 +62,7 @@ const PreviewButton = React.memo(({ fileName }) => {
   return (
     <button
       onClick={togglePlayPause}
-      className="bg-accent text-night p-2 rounded-full px-4 flex items-center gap-1"
+      className="bg-nightLight hover:bg-accent hover:text-night p-2 rounded-full px-4 flex items-center gap-1"
     >
       
       {isPlaying 
@@ -97,6 +100,13 @@ const TrackerScrubber = ({ currentTime, duration, onChange }) => {
       />
     </div>
   );
+};
+
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 B';
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(2) + ' ' + sizes[i];
 };
 
 const AudioControls = React.memo(({ url }) => {
@@ -173,10 +183,12 @@ const AudioControls = React.memo(({ url }) => {
   );
 });
 
-const AudioTrack = React.memo(({ name, url, onRemove }) => (
+const AudioTrack = React.memo(({ name, url, size, onRemove }) => (
   <div className="p-4">
     <b>{name}</b>
-    <br/>
+
+    <small className="table bg-night mt-2 mb-1 border-2 border-nightLight border-solid py-1 px-4 rounded-full">{formatFileSize(size)}</small>
+
     <div className="flex items-center justify-between">
       <AudioControls url={url} />
       <button
@@ -221,7 +233,7 @@ const handleFileUpload = (fileName, acceptedFiles, config, setConfig, setErrorMe
   let invalidFiles = false;
 
   acceptedFiles.forEach((file) => {
-    if (!file.name.endsWith(".wav") && !file.name.endsWith(".mp3")) {
+    if (!file.name.endsWith(".wav")) {
       invalidFiles = true;
       return;
     }
@@ -235,7 +247,7 @@ const handleFileUpload = (fileName, acceptedFiles, config, setConfig, setErrorMe
           name: file.name,
           file,
           url: objectURL,
-          size: file.size,
+          size: file.size
         },
       ];
     }
@@ -252,7 +264,7 @@ const handleFileUpload = (fileName, acceptedFiles, config, setConfig, setErrorMe
 const Dropzone = React.memo(({ fileName, handleFileUpload }) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: useCallback((acceptedFiles) => handleFileUpload(fileName, acceptedFiles), [fileName, handleFileUpload]),
-    accept: ".wav, .mp3", // Only allow .wav files
+    accept: {"audio/wav": [".wav"]}, // Only allow .wav files
     multiple: true,
   });
 
@@ -261,10 +273,10 @@ const Dropzone = React.memo(({ fileName, handleFileUpload }) => {
       {...getRootProps()}
       className={`border-dashed border-4 p-6 rounded-lg transition-colors ${
         isDragActive ? "border-accent" : "border-nightLight"
-      } bg-nightMid text-white text-center`}
+      } bg-nightMid text-white text-center cursor-pointer hover:bg-nightLight`}
     >
       <input {...getInputProps()} />
-      <p>Drag & Drop or Click <br/> to Add <b className="text-accent">.wav</b> File(s)</p>
+      <p>Add <b className="text-accent">.wav</b> File(s) <br/> or Drag & Drop</p>
     </div>
   );
 });
@@ -274,7 +286,7 @@ const App = () => {
   const fileInputRef = useRef(null);
 
   const handleUploadClick = () => {
-    setIsModalOpen(true); // Show the modal first
+    setIsModalOpen(true);
   };
 
   const [config, setConfig] = useState(
@@ -404,8 +416,6 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-night text-white font-sans p-4 mx-auto block">
-      <h1 className="text-3xl font-bold mb-6 text-center">Create an SFX Pack</h1>
-
       {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={isModalOpen}
@@ -414,95 +424,109 @@ const App = () => {
         message="Importing a new ZIP file will replace your current project. Are you sure you want to continue?"
       />
 
-      <div className="mb-8 flex justify-center">
-        <button
-          type="button"
-          className="bg-accent text-night p-3 rounded hover:bg-accent/90 cursor-pointer flex items-center gap-2"
-          onClick={handleUploadClick}
-        >
-          <ArrowUpTrayIcon className="h-5 w-5" />
-          Import <b className="bg-accentMid inline-block font-bold px-2 rounded-sm">zip</b>
-        </button>
-        <input
-          id="zip-upload"
-          ref = { fileInputRef }
-          type="file"
-          accept="zip"
-          className="hidden"
-          onChange={handleZipUpload}
-        />
-        <button
-          onClick={handleExport}
-          className="bg-accent text-night ml-2 p-3 rounded hover:bg-accent/90 cursor-pointer flex items-center gap-2"
-        >
-          <FolderIcon className="h-5 w-5" />
-          Export <b className="bg-accentMid inline-block font-bold px-2 rounded-sm">zip</b>
-        </button>
+      <div className="md:flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-left mb-6">SDeckTools</h1>
+          <h2 className="text-xl font-bold text-left">Create SFX Packs</h2>
+          <h3 className="text-sm border-l-accent border-l-4 pl-2">For SteamOS & Big Picture</h3>
+        </div>
+
+        <div className="md:mb-14 mt-8 md:mt-auto flex justify-center">
+          <button
+            type="button"
+            className="bg-accent text-night p-3 rounded w-full md:w-auto hover:bg-accent/90 cursor-pointer flex items-center justify-center gap-2"
+            onClick={handleUploadClick}
+          >
+            <ArrowUpTrayIcon className="h-5 w-5" />
+            Import <b className="bg-accentMid inline-block font-bold px-2 rounded-sm">zip</b>
+          </button>
+          <input
+            id="zip-upload"
+            ref = { fileInputRef }
+            type="file"
+            accept=".zip"
+            className="hidden"
+            onChange={handleZipUpload}
+          />
+        </div>
       </div>
 
 
-      <div className="md:flex w-full mt-4 items-start justify-center">
+      <div className="md:flex w-full mt-4 mx-auto items-start justify-center">
         {/* Pack Info Form */}
-        <div className="mb-8 p-4 rounded-md md:w-[50%] max-w-md">
+        <div className="mb-8 rounded-md md:w-[50%] md:max-w-md md:sticky top-16">
           <h3 className="text-xl font-semibold mb-4">Pack.json Settings</h3>
 
-          <div className="mb-4">
-            <label className="block text-sm font-semibold">Name</label>
+          <div className="mb-4 border-l-4 border-l-accent pl-4">
+            <label htmlFor="pack-name" className="block text-sm font-semibold text-accent">Name</label>
             <input
+              id = "pack-name"
               type="text"
-              className="w-full p-2 rounded bg-nightLight text-white mt-1"
+              className="w-full px-0 py-2 bg-transparent text-white mt-1"
               value={packInfo.name}
               onChange={(e) => handlePackInfoChange("name", e.target.value)}
             />
           </div>
 
-          <div className="mb-4">
-            <label className="block text-sm font-semibold">Description</label>
+          <div className="mb-4 border-l-4 border-l-accent pl-4">
+            <label htmlFor="pack-description" className="block text-sm font-semibold text-accent">Description</label>
             <textarea
+              id="pack-description"
               className="w-full p-2 rounded bg-nightLight text-white mt-1"
               value={packInfo.description}
               onChange={(e) => handlePackInfoChange("description", e.target.value)}
             />
           </div>
 
-          <div className="mb-4">
-            <label className="block text-sm font-semibold">Author</label>
+          <div className="mb-4 border-l-4 border-l-accent pl-4">
+            <label htmlFor="pack-author" className="block text-sm font-semibold text-accent">Author</label>
             <input
+              id="pack-author"
               type="text"
-              className="w-full p-2 rounded bg-nightLight text-white mt-1"
+              className="w-full px-0 py-2 bg-transparent text-white mt-1"
               value={packInfo.author}
               onChange={(e) => handlePackInfoChange("author", e.target.value)}
             />
           </div>
 
-          <div className="mb-4">
-            <label className="block text-sm font-semibold">Version</label>
+          <div className="mb-4 border-l-4 border-l-accent pl-4">
+            <label htmlFor="pack-version" className="block text-sm font-semibold text-accent">Version</label>
             <input
+              id="pack-version"
               type="text"
-              className="w-full p-2 rounded bg-nightLight text-white mt-1"
+              className="w-full px-0 py-2 bg-transparent text-white mt-1"
               value={packInfo.version}
               onChange={(e) => handlePackInfoChange("version", e.target.value)}
             />
           </div>
 
-          <button
-            onClick={() => handleExportConfig(config, packInfo)}
-            className="bg-accent text-night p-3 rounded hover:bg-accent/90 cursor-pointer flex items-center gap-2"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5" />
-            Export Pack.json
-          </button>
+          <div className="flex items-center justify-end">
+            <button
+              onClick={() => handleExportConfig(config, packInfo)}
+              className="bg-accent text-night p-3 rounded hover:bg-accent/90 cursor-pointer flex items-center gap-2"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5" />
+              Export <b className="bg-accentMid inline-block font-bold px-2 rounded-sm">pack.json</b>
+            </button>
+            <button
+              onClick={handleExport}
+              className="bg-accent text-night ml-2 p-3 rounded hover:bg-accent/90 cursor-pointer flex items-center gap-2"
+            >
+              <FolderIcon className="h-5 w-5" />
+              Export <b className="bg-accentMid inline-block font-bold px-2 rounded-sm">zip</b>
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 w-[50vw] md:ml-4">
+        <div className="md:ml-16 flex-1 md:max-w-xl">
           {/* Error message */}
           {errorMessage && (
-            <div className="mb-4 text-white text-center text-sm border-l-red-600 border-l-4 bg-nightMid pb-2 pt-1 sticky top-0">{errorMessage}</div>
+            <div className="mb-4 table text-white text-left text-sm border-l-red-600 border-l-4 bg-nightMid pb-2 pt-1 sticky top-0">{errorMessage}</div>
           )}
 
           <ul className="list-none block w-full">
             {itemsData.map((item) => (
-              <li key={item.fileName} className="mb-12 w-full max-w-xl">
+              <li key={item.fileName} className="mb-12 w-full block">
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-xl font-semibold text-left">{item.title}</h2>
@@ -521,8 +545,8 @@ const App = () => {
                 </div>
 
                 <div className="mt-4 space-y-4 max-h-[240px] overflow-y-auto bg-nightMid">
-                  {config[item.fileName].map(({ name, url }) => (
-                    <AudioTrack key={name} name={name} url={url} onRemove={(name) => handleRemoveFile(item.fileName, name)} />
+                  {config[item.fileName].map(({ name, url, size }) => (
+                    <AudioTrack key={name} name={name} url={url} size={size} onRemove={(name) => handleRemoveFile(item.fileName, name)} />
                   ))}
                 </div>
               </li>
@@ -530,7 +554,6 @@ const App = () => {
           </ul>
         </div>
       </div>
-
     </div>
   );
 };

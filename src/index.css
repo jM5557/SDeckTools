@@ -71,4 +71,5 @@ button:focus-visible {
 #root {
   margin: auto;
   display: block;
+  width: 100%;
 }
