@@ -2,8 +2,34 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useDropzone } from 'react-dropzone';
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
-import { TrashIcon, ArrowUpTrayIcon, FolderIcon, PlayIcon, PauseIcon, EyeIcon } from "@heroicons/react/24/outline";
+import { TrashIcon, ArrowUpTrayIcon, FolderIcon, PlayIcon, PauseIcon, ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import itemsData from "./data/files.json";
+
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, message }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-nightMid p-6 rounded-md shadow-lg text-white max-w-sm w-full">
+        <p className="text-lg mb-4">{message}</p>
+        <div className="flex justify-end gap-4">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-nightLight rounded hover:bg-accent hover:text-night transition"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 text-night bg-accent rounded hover:bg-accentMid transition"
+          >
+            Yes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const PreviewButton = React.memo(({ fileName }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -47,6 +73,31 @@ const PreviewButton = React.memo(({ fileName }) => {
     </button>
   );
 });
+
+const TrackerScrubber = ({ currentTime, duration, onChange }) => {
+  const handleScrubberClick = (e) => {
+    const rect = e.target.getBoundingClientRect();
+    const clickPosition = e.clientX - rect.left; // Click position relative to the element
+    const newTime = (clickPosition / rect.width) * duration;
+    onChange(newTime);
+  };
+
+  return (
+    <div
+      className="relative w-[120px] h-2 bg-gray-600 rounded cursor-pointer"
+      onClick={handleScrubberClick}
+    >
+      <div
+        className="absolute top-0 left-0 h-full bg-accent rounded"
+        style={{ width: `${(currentTime / duration) * 100}%` }}
+      />
+      <div
+        className="absolute top-0 left-0 h-2 w-4 bg-accentLight rounded-full transform -translate-x-1/2"
+        style={{ left: `${(currentTime / duration) * 100}%` }}
+      />
+    </div>
+  );
+};
 
 const AudioControls = React.memo(({ url }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -96,11 +147,11 @@ const AudioControls = React.memo(({ url }) => {
   };
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-4 mt-2">
       <button
         onClick={togglePlayPause}
-        className={`p-2 rounded-full text-white ${
-          isPlaying ? "bg-red-500 hover:bg-red-400" : "bg-green-500 hover:bg-green-400"
+        className={`p-2 rounded ${
+          isPlaying ? "bg-accent hover:bg-accentLight text-night" : "bg-nightLight hover:bg-night text-white"
         }`}
       >
         {isPlaying 
@@ -108,16 +159,12 @@ const AudioControls = React.memo(({ url }) => {
           : <PlayIcon className="h-5 w-5" />}
       </button>
       <div className="flex-1">
-        <input
-          type="range"
-          min="0"
-          max={duration}
-          step="0.1"
-          value={currentTime}
+        <TrackerScrubber
+          currentTime={currentTime}
+          duration={duration}
           onChange={handleScrubberChange}
-          className="w-full accent-blue-500"
         />
-        <div className="flex justify-between text-xs text-gray-400 mt-1">
+        <div className="flex justify-between text-xs text-accentLight mt-1">
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
         </div>
@@ -127,25 +174,54 @@ const AudioControls = React.memo(({ url }) => {
 });
 
 const AudioTrack = React.memo(({ name, url, onRemove }) => (
-  <div className="flex items-center gap-4">
+  <div className="p-4">
     <b>{name}</b>
-    <AudioControls url={url} />
-    <button
-      onClick={() => onRemove(name)}
-      className="bg-red-500 text-white p-2 rounded hover:bg-red-400 flex items-center gap-1"
-    >
-      <TrashIcon className="h-5 w-5" />
-      <span className="hidden">Delete</span>
-    </button>
+    <br/>
+    <div className="flex items-center justify-between">
+      <AudioControls url={url} />
+      <button
+        onClick={() => onRemove(name)}
+        className="bg-nightLight text-white p-2 rounded hover:bg-accent hover:text-night flex items-center gap-1"
+      >
+        <TrashIcon className="h-5 w-5" />
+        <span className="hidden">Delete</span>
+      </button>
+    </div>
   </div>
 ));
+
+const handleExportConfig = (config, packInfo) => {
+  const exportMappings = {};
+  for (const fileName in config) {
+    exportMappings[fileName] = config[fileName].map((f) => f.name);
+  }
+
+  const configData = {
+    ...packInfo,
+    mappings: exportMappings,
+  };
+
+  const blob = new Blob([JSON.stringify(configData, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "config.json";
+  document.body.appendChild(link);
+  link.click();
+
+  // Cleanup
+  URL.revokeObjectURL(url);
+  document.body.removeChild(link);
+};
+
 
 const handleFileUpload = (fileName, acceptedFiles, config, setConfig, setErrorMessage) => {
   const newConfig = { ...config };
   let invalidFiles = false;
 
   acceptedFiles.forEach((file) => {
-    if (!file.name.endsWith(".wav")) {
+    if (!file.name.endsWith(".wav") && !file.name.endsWith(".mp3")) {
       invalidFiles = true;
       return;
     }
@@ -176,7 +252,7 @@ const handleFileUpload = (fileName, acceptedFiles, config, setConfig, setErrorMe
 const Dropzone = React.memo(({ fileName, handleFileUpload }) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: useCallback((acceptedFiles) => handleFileUpload(fileName, acceptedFiles), [fileName, handleFileUpload]),
-    accept: ".wav", // Only allow .wav files
+    accept: ".wav, .mp3", // Only allow .wav files
     multiple: true,
   });
 
@@ -194,6 +270,13 @@ const Dropzone = React.memo(({ fileName, handleFileUpload }) => {
 });
 
 const App = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleUploadClick = () => {
+    setIsModalOpen(true); // Show the modal first
+  };
+
   const [config, setConfig] = useState(
     itemsData.reduce((acc, item) => {
       acc[item.fileName] = [];
@@ -306,6 +389,15 @@ const App = () => {
     setPackInfo(parsedPack);
   };
 
+  const confirmImport = (event) => {
+    fileInputRef.current.click(); // Trigger the file input dialog programmatically
+    setIsModalOpen(false);
+  };
+
+  const cancelImport = () => {
+    setIsModalOpen(false);
+  }
+
   const handlePackInfoChange = useCallback((field, value) => {
     setPackInfo((prev) => ({ ...prev, [field]: value }));
   }, []);
@@ -314,16 +406,26 @@ const App = () => {
     <div className="min-h-screen bg-night text-white font-sans p-4 mx-auto block">
       <h1 className="text-3xl font-bold mb-6 text-center">Create an SFX Pack</h1>
 
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isModalOpen}
+        onClose={cancelImport}
+        onConfirm={confirmImport}
+        message="Importing a new ZIP file will replace your current project. Are you sure you want to continue?"
+      />
+
       <div className="mb-8 flex justify-center">
-        <label
-          htmlFor="zip-upload"
+        <button
+          type="button"
           className="bg-accent text-night p-3 rounded hover:bg-accent/90 cursor-pointer flex items-center gap-2"
+          onClick={handleUploadClick}
         >
           <ArrowUpTrayIcon className="h-5 w-5" />
           Import <b className="bg-accentMid inline-block font-bold px-2 rounded-sm">zip</b>
-        </label>
+        </button>
         <input
           id="zip-upload"
+          ref = { fileInputRef }
           type="file"
           accept="zip"
           className="hidden"
@@ -339,7 +441,7 @@ const App = () => {
       </div>
 
 
-      <div className="md:flex mt-4 items-start justify-center">
+      <div className="md:flex w-full mt-4 items-start justify-center">
         {/* Pack Info Form */}
         <div className="mb-8 p-4 rounded-md md:w-[50%] max-w-md">
           <h3 className="text-xl font-semibold mb-4">Pack.json Settings</h3>
@@ -382,15 +484,23 @@ const App = () => {
               onChange={(e) => handlePackInfoChange("version", e.target.value)}
             />
           </div>
+
+          <button
+            onClick={() => handleExportConfig(config, packInfo)}
+            className="bg-accent text-night p-3 rounded hover:bg-accent/90 cursor-pointer flex items-center gap-2"
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+            Export Pack.json
+          </button>
         </div>
 
-        <div className="flex-1 md:ml-4">
+        <div className="flex-1 w-[50vw] md:ml-4">
           {/* Error message */}
           {errorMessage && (
-            <div className="mb-4 text-nightMid text-center">{errorMessage}</div>
+            <div className="mb-4 text-white text-center text-sm border-l-red-600 border-l-4 bg-nightMid pb-2 pt-1 sticky top-0">{errorMessage}</div>
           )}
 
-          <ul className="list-none">
+          <ul className="list-none block w-full">
             {itemsData.map((item) => (
               <li key={item.fileName} className="mb-12 w-full max-w-xl">
                 <div className="flex items-start justify-between">
@@ -410,7 +520,7 @@ const App = () => {
                   />
                 </div>
 
-                <div className="mt-4 space-y-4">
+                <div className="mt-4 space-y-4 max-h-[240px] overflow-y-auto bg-nightMid">
                   {config[item.fileName].map(({ name, url }) => (
                     <AudioTrack key={name} name={name} url={url} onRemove={(name) => handleRemoveFile(item.fileName, name)} />
                   ))}
