@@ -464,44 +464,44 @@ const App = () => {
         <div className="mb-8 rounded-md md:w-[50%] md:max-w-md md:sticky top-16">
           <h3 className="text-xl font-semibold mb-4">Pack.json Settings</h3>
 
-          <div className="mb-4 pl-2">
+          <div className="mb-4">
             <label htmlFor="pack-name" className="block text-sm font-semibold text-accent">Name</label>
             <input
               id = "pack-name"
               type="text"
-              className="w-full px-0 py-2 bg-transparent text-white mt-1"
+              className="w-full outline-none focus:border-b-2 focus:border-accent px-0 py-2 bg-transparent text-white mt-1"
               value={packInfo.name}
               onChange={(e) => handlePackInfoChange("name", e.target.value)}
             />
           </div>
 
-          <div className="mb-4 pl-2">
+          <div className="mb-4">
             <label htmlFor="pack-description" className="block text-sm font-semibold text-accent">Description</label>
             <textarea
               id="pack-description"
-              className="w-full p-2 rounded bg-nightLight text-white mt-1"
+              className="w-full outline-none focus:border-b-2 focus:border-accent p-2 bg-nightLight text-white mt-1"
               value={packInfo.description}
               onChange={(e) => handlePackInfoChange("description", e.target.value)}
             />
           </div>
 
-          <div className="mb-4 pl-2">
+          <div className="mb-4">
             <label htmlFor="pack-author" className="block text-sm font-semibold text-accent">Author</label>
             <input
               id="pack-author"
               type="text"
-              className="w-full px-0 py-2 bg-transparent text-white mt-1"
+              className="w-full outline-none focus:border-b-2 focus:border-accent px-0 py-2 bg-transparent text-white mt-1"
               value={packInfo.author}
               onChange={(e) => handlePackInfoChange("author", e.target.value)}
             />
           </div>
 
-          <div className="mb-4 pl-2">
+          <div className="mb-4">
             <label htmlFor="pack-version" className="block text-sm font-semibold text-accent">Version</label>
             <input
               id="pack-version"
               type="text"
-              className="w-full px-0 py-2 bg-transparent text-white mt-1"
+              className="w-full outline-none focus:border-b-2 focus:border-accent px-0 py-2 bg-transparent text-white mt-1"
               value={packInfo.version}
               onChange={(e) => handlePackInfoChange("version", e.target.value)}
             />
@@ -510,10 +510,10 @@ const App = () => {
           <div className="flex items-center justify-end">
             <button
               onClick={() => handleExportConfig(config, packInfo)}
-              className="bg-accent text-night p-3 rounded hover:bg-accent/90 cursor-pointer flex items-center gap-2"
+              className="bg-nightLight hover:border-accent text-white p-3 rounded cursor-pointer flex items-center gap-2"
             >
               <ArrowDownTrayIcon className="h-5 w-5" />
-              Export <b className="bg-accentMid inline-block font-bold px-2 rounded-sm">pack.json</b>
+              Export <b className="bg-nightMid inline-block font-bold px-2 rounded-sm">pack.json</b>
             </button>
             <button
               onClick={handleExport}
