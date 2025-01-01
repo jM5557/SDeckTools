@@ -184,7 +184,7 @@ const AudioControls = React.memo(({ url }) => {
 });
 
 const AudioTrack = React.memo(({ name, url, size, onRemove }) => (
-  <div className="p-4">
+  <div className="p-4 border-l-4 border-l-transparent mt-0 hover:border-l-accent">
     <b>{name}</b>
 
     <small className="table bg-night mt-2 mb-1 border-2 border-nightLight border-solid py-1 px-4 rounded-full">{formatFileSize(size)}</small>
@@ -254,6 +254,7 @@ const handleFileUpload = (fileName, acceptedFiles, config, setConfig, setErrorMe
   });
 
   setConfig(newConfig);
+  
   if (invalidFiles) {
     setErrorMessage("Some files were incompatible and have been skipped.");
   } else {
@@ -463,7 +464,7 @@ const App = () => {
         <div className="mb-8 rounded-md md:w-[50%] md:max-w-md md:sticky top-16">
           <h3 className="text-xl font-semibold mb-4">Pack.json Settings</h3>
 
-          <div className="mb-4 border-l-4 border-l-accent pl-4">
+          <div className="mb-4 pl-2">
             <label htmlFor="pack-name" className="block text-sm font-semibold text-accent">Name</label>
             <input
               id = "pack-name"
@@ -474,7 +475,7 @@ const App = () => {
             />
           </div>
 
-          <div className="mb-4 border-l-4 border-l-accent pl-4">
+          <div className="mb-4 pl-2">
             <label htmlFor="pack-description" className="block text-sm font-semibold text-accent">Description</label>
             <textarea
               id="pack-description"
@@ -484,7 +485,7 @@ const App = () => {
             />
           </div>
 
-          <div className="mb-4 border-l-4 border-l-accent pl-4">
+          <div className="mb-4 pl-2">
             <label htmlFor="pack-author" className="block text-sm font-semibold text-accent">Author</label>
             <input
               id="pack-author"
@@ -495,7 +496,7 @@ const App = () => {
             />
           </div>
 
-          <div className="mb-4 border-l-4 border-l-accent pl-4">
+          <div className="mb-4 pl-2">
             <label htmlFor="pack-version" className="block text-sm font-semibold text-accent">Version</label>
             <input
               id="pack-version"
@@ -543,7 +544,6 @@ const App = () => {
                 <p className="text-left mt-2 mb-2">{item.description}</p>
 
                 <div className="my-4">
-                  {/* Custom Dropzone for file upload */}
                   <Dropzone 
                     fileName={item.fileName} 
                     handleFileUpload={handleFileUploadCallback}  
@@ -564,7 +564,7 @@ const App = () => {
                   </small>
                 }
 
-                <div className="mt-4 space-y-4 max-h-[240px] overflow-y-auto bg-nightMid">
+                <div className="mt-4 max-h-[240px] overflow-y-auto bg-nightMid">
                   {config[item.fileName].map(({ name, url, size }) => (
                     <AudioTrack key={name} name={name} url={url} size={size} onRemove={(name) => handleRemoveFile(item.fileName, name)} />
                   ))}
