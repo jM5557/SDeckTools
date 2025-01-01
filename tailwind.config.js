@@ -3,12 +3,15 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        accent: "#3B82F6", // Light blue accent
+        accent: "#15f7ff", // Light blue accent,
+        accentMid: "rgb(24, 216, 223)", // Light blue accent
+        nightLight: "#26354e",
+        nightMid: "#202c41",
         night: "#1E293B", // Dark background
         white: "#FFFFFF", // White text
       },
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
+        sans: ["Mulish", "sans-serif"],
       },
     },
   },
